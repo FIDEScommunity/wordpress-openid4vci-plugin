@@ -11,12 +11,11 @@
  */
 // do a session a start
 global $_SESSION;
-
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if(isset($_SESSION['presentationResponse'])){
+ if(isset($_SESSION['presentationResponse'])){
     $presentationResponse = $_SESSION['presentationResponse'];
     if(isset($presentationResponse['Pid']['claims']['given_name'])){
         $givenName = $presentationResponse['Pid']['claims']['given_name'];
@@ -59,19 +58,20 @@ if(isset($attributes['formData']) && !empty($attributes['formData'])){
         $html .= '</div>';
     }
     $html .= '<input type="hidden" name="qrrequest">';
-    $html .= '<button type="submit" class="btn btn-primary btn-sm">'. __( 'Submit', 'fides' ).'</button>';
+    $html .= '<div class="form-input mb-3"><label class="d-block mb-2"><strong>Wallet URL</strong></label><input type="text" id="org-wallet-url" name="walletUrl" placeholder="Enter wallet URL" /></div>';
+    $html .= '<button type="submit" class="btn btn-primary btn-sm">'. __( 'Connect to wallet', 'fides' ).'</button>';
     $html .= '</form>';
 
 }
 
 if(isset($_GET['qrrequest'])){
-    $claims = [];
-    foreach($_GET as $name => $value) {
-        if($name !== 'qrrequest'){
-            $claims[$name] = $value;
-        }
-    }
-    $response = sendVciRequest($claims, $attributes);
+   $claims = [];
+   foreach($_GET as $name => $value) {
+       if($name !== 'qrrequest'){
+           $claims[$name] = $value;
+       }
+   }
+   $response = sendVciRequest($claims, $attributes);
 
    if (is_wp_error($response)) {
        return 'Error fetching data';
@@ -82,16 +82,17 @@ if(isset($_GET['qrrequest'])){
 
    do_action( 'wp_enqueue_script' );
 
-   $qr_content = $attributes['qrCodeEnabled'] ? '<img id="openid4vp_qrImage" src="data:' . $result->qr_uri . '"></>'. __( 'or ', 'fides' ) : '';
-   $block_content = '<div ' . get_block_wrapper_attributes() . '>' . $qr_content . __( 'click ', 'fides' ) . '<a href="' . $result->request_uri . '">link</a></div>';
+   wp_redirect( $result -> request_uri );
+   exit;
 } elseif($form){
    $block_content = '<div ' . get_block_wrapper_attributes() . '>'.$html.'</div>';
+} elseif(!isset($_GET['walletUrl'])) {
+    $block_content = '<form class="mt-4 d-block" id="OpenID4VCI-form"><div ' . get_block_wrapper_attributes() . '><input type="text" id="org-wallet-url" name="walletUrl" placeholder="Enter wallet URL" />
+            <button type="submit" class="btn btn-primary btn-sm">'. __( 'Connect to wallet', 'fides' ).'</button></div></form>';
 } else {
-   $qr_content = $attributes['qrCodeEnabled'] ? '<img id="openid4vp_qrImage" src="data:' . $result->qr_uri . '"></>'. __( 'or ', 'fides' ) : '';
-   $block_content = '<div ' . get_block_wrapper_attributes() . '>' . $qr_content . __( 'click ', 'fides' ) . '<a href="' . $result->request_uri . '">link</a></div>';
+   wp_redirect( $result -> request_uri );
+   exit;
 }
-
-
 
 echo $block_content;
 

@@ -26,7 +26,7 @@ import { InspectorControls, useBlockProps, InspectorAdvancedControls } from '@wo
  * @see https://developer.wordpress.org/block-editor/reference-guides/components/text-control/
  * @see https://developer.wordpress.org/block-editor/reference-guides/components/toggle-control/
  */
-import { PanelBody, TextControl, TextareaControl, ToggleControl } from '@wordpress/components';
+import { PanelBody, TextControl, TextareaControl } from '@wordpress/components';
 
 /**
  * Imports the useEffect React Hook. This is used to set an attribute when the
@@ -49,7 +49,7 @@ import { useEffect } from 'react';
  * @return {Element} Element to render.
  */
 export default function Edit( { attributes, setAttributes } ) {
-	const { openidEndpoint, credentialIssueTemplateKey, authenticationHeaderName, authenticationToken, credentialData, formData, sessionData, qrCodeEnabled, qrSize, qrColorDark, qrColorLight, qrPadding } = attributes;
+	const { openidEndpoint, credentialIssueTemplateKey, authenticationHeaderName, authenticationToken, credentialData, formData, sessionData } = attributes;
 
 	return (
 		<>
@@ -122,65 +122,6 @@ export default function Edit( { attributes, setAttributes } ) {
 						setAttributes( { authenticationToken: value } )
 					}
 				/>
-				<ToggleControl
-					label={ __(
-						'QR code',
-						'openid4vc-issue'
-					) }
-					help={
-						qrCodeEnabled
-							? 'Show QR Code.'
-							: 'Don\'t show QR Code.'
-					}
-					checked={ qrCodeEnabled }
-					onChange={ ( value ) =>
-						setAttributes( { qrCodeEnabled: value } )
-					}
-				/>
-				{ qrCodeEnabled &&
-					<TextControl
-						label={ __(
-							'QR size',
-							'openid4vc-issue'
-						) }
-						value={ qrSize }
-						onChange={ ( value ) =>
-							setAttributes( { qrSize: value } )
-						}
-					/>
-				}
-				{ qrCodeEnabled &&
-					<TextControl
-						label={ __(
-							'QR color dark',
-							'openid4vc-issue'
-						) }
-						value={ qrColorDark }
-						onChange={ ( value ) =>
-							setAttributes( { qrColorDark: value } )
-						}
-					/>
-				}
-				{ qrCodeEnabled && <TextControl
-					label={ __(
-						'QR color light',
-						'openid4vc-issue'
-					) }
-					value={ qrColorLight }
-					onChange={ ( value ) =>
-						setAttributes( { qrColorLight: value } )
-					}
-				/>}
-				{ qrCodeEnabled && <TextControl
-					label={ __(
-						'QR padding',
-						'openid4vc-issue'
-					) }
-					value={ qrPadding }
-					onChange={ ( value ) =>
-						setAttributes( { qrPadding: value } )
-					}
-				/>}
 			</InspectorAdvancedControls>
 
 			<p {...useBlockProps()}><img decoding="async"

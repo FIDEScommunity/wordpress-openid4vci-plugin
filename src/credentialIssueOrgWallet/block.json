@@ -1,9 +1,9 @@
 {
 	"$schema": "https://schemas.wp.org/trunk/block.json",
 	"apiVersion": 3,
-	"name": "openid4vci-plugin/openid4vc-issue-personal-wallet",
+	"name": "openid4vci-plugin/openid4vc-issue-organisation-wallet",
 	"version": "0.2.0",
-	"title": "OID4VCI – Issue to personal wallet",
+	"title": "OID4VCI – Issue to organizational wallet",
 	"category": "widgets",
 	"description": "Start a credential issuance flow",
 	"example": {},
@@ -28,22 +28,6 @@
 		},
 		"sessionData": {
 			"type": "string"
-		},
-		"qrCodeEnabled": {
-			"type": "boolean",
-			"default": true
-		},
-		"qrSize": {
-			"type": "number"
-		},
-		"qrColorDark": {
-			"type": "string"
-		},
-		"qrColorLight": {
-			"type": "string"
-		},
-		"qrPadding": {
-			"type": "number"
 		}
 	},
 	"supports": {

@@ -43,6 +43,7 @@ register_activation_hook(__FILE__, [$openid4vci, 'upgrade']);
  */
 function create_block_openid4vci_block_init() {
    register_block_type( __DIR__ . '/build/credentialIssue' );
+   register_block_type( __DIR__ . '/build/credentialIssueOrgWallet' );
     if(!session_id()) {
         session_start();
     }
@@ -50,4 +51,56 @@ function create_block_openid4vci_block_init() {
 
 add_action( 'init', 'create_block_openid4vci_block_init' );
 // Add an action to call our script enqueuing function
-add_action( 'wp_enqueue_script', 'enqueue_my_scripts' );
+//add_action( 'wp_enqueue_script', 'enqueue_my_scripts' );
+
+function sendVciRequest($claims, $attributes) {
+    $options = new OpenID4VCI_Admin_Options();
+    $openidEndpoint = $options->openidEndpoint;
+    $authenticationHeaderName = $options->authenticationHeaderName;
+    $authenticationToken = $options->authenticationToken;
+    if (!empty($attributes['openidEndpoint'])) {
+        $openidEndpoint = $attributes['openidEndpoint'];
+        $authenticationHeaderName = $attributes['authenticationHeaderName'];
+        $authenticationToken = $attributes['authenticationToken'];
+    }
+
+    $params = [];
+    $params['claims'] = $claims;
+    $params['template_id'] = $attributes['credentialIssueTemplateKey'];
+    if (isset($_GET['walletUrl'])) {
+        $params['request_uri_base'] = $_GET['walletUrl'];
+    }
+    if (isset($attributes['qrCodeEnabled']) && $attributes['qrCodeEnabled']) {
+        $qrCode = (object)[];
+        if (array_key_exists('qrSize', $attributes) && !empty($attributes['qrSize'])) {
+            $qrCode->size = $attributes['qrSize'];
+        }
+        if (array_key_exists('qrColorDark', $attributes) && !empty($attributes['qrColorDark'])) {
+            $qrCode->color_dark = $attributes['qrColorDark'];
+        }
+        if (array_key_exists('qrColorLight', $attributes) && !empty($attributes['qrColorLight'])) {
+            $qrCode->color_light = $attributes['qrColorLight'];
+        }
+        if (array_key_exists('qrPadding', $attributes) && !empty($attributes['qrPadding'])) {
+            $qrCode->padding = $attributes['qrPadding'];
+        }
+        $params['qr_code'] = $qrCode;
+    }
+
+    if (isset($_GET['walletUrl'])) {
+        $params['request_uri_base'] = $_GET['walletUrl'];
+    }
+    $credentialData = json_encode($params, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT);
+
+   $response = wp_remote_post( $openidEndpoint, array(
+       'headers' => array('Content-Type' => 'application/json', $authenticationHeaderName => $authenticationToken),
+       'timeout'     => 45,
+       'redirection' => 5,
+       'blocking'    => true,
+       'body'        => $credentialData
+   ));
+
+   return $response;
+}
+
+
