@@ -14,31 +14,21 @@ global $_SESSION;
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+$claims = [];
+if(isset($attributes['credentialData']) && !empty($attributes['credentialData'])) {
+   $claims = json_decode($attributes['credentialData'], true);
+}
 
- if(isset($_SESSION['presentationResponse'])){
+if(isset($_SESSION['presentationResponse'])){
     $presentationResponse = $_SESSION['presentationResponse'];
     if(isset($presentationResponse['Pid']['claims']['given_name'])){
         $givenName = $presentationResponse['Pid']['claims']['given_name'];
         $familyName = $presentationResponse['Pid']['claims']['family_name'];
 
-        $claims = [];
         $claims['firstname'] = $presentationResponse['Pid']['claims']['given_name'];
         $claims['lastname'] = $presentationResponse['Pid']['claims']['family_name'];
-
-        $attributes['credentialData'] = $claims;
+        $claims['jobtitle'] = '';
     }
-}
-
-if(isset($attributes['credentialData']) && !empty($attributes['credentialData'])) {
-   $response = sendVciRequest(json_decode($attributes['credentialData']), $attributes);
-
-   if (is_wp_error($response)) {
-       return 'Error fetching data';
-   }
-
-   $body = wp_remote_retrieve_body($response);
-
-   $result = json_decode( $body );
 }
 
 do_action( 'wp_enqueue_script' );
@@ -65,9 +55,8 @@ if(isset($attributes['formData']) && !empty($attributes['formData'])){
 }
 
 if(isset($_GET['qrrequest'])){
-   $claims = [];
    foreach($_GET as $name => $value) {
-       if($name !== 'qrrequest'){
+       if($name !== 'qrrequest' && $name !== 'walletUrl'){
            $claims[$name] = $value;
        }
    }
@@ -90,6 +79,16 @@ if(isset($_GET['qrrequest'])){
     $block_content = '<form class="mt-4 d-block" id="OpenID4VCI-form"><div ' . get_block_wrapper_attributes() . '><input type="text" id="org-wallet-url" name="walletUrl" placeholder="Enter wallet URL" />
             <button type="submit" class="btn btn-primary btn-sm">'. __( 'Connect to wallet', 'fides' ).'</button></div></form>';
 } else {
+   $response = sendVciRequest($claims, $attributes);
+
+   if (is_wp_error($response)) {
+       return 'Error fetching data';
+   }
+
+   $body = wp_remote_retrieve_body($response);
+
+   $result = json_decode( $body );
+
    wp_redirect( $result -> request_uri );
    exit;
 }
