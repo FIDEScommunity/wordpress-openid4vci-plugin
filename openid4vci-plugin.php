@@ -100,7 +100,26 @@ function sendVciRequest($claims, $attributes) {
        'body'        => $credentialData
    ));
 
-   return $response;
+    if (is_wp_error($response)) {
+        $block_content = '<div ' . get_block_wrapper_attributes() . '><p>Error fetching data</p></div>';
+        return ["success" => false, "error" => $block_content];
+    }
+
+    $body = wp_remote_retrieve_body($response);
+    $result = json_decode( $body );
+
+    if ( json_last_error() !== JSON_ERROR_NONE ) {
+        $block_content = '<div ' . get_block_wrapper_attributes() . '><p>JSON decode fout: ' . json_last_error_msg().'</p></div>';
+        return ["success" => false, "error" => $block_content];
+    }
+
+    // Controleer op fout in de API response zelf (bijv. foutcode of foutbericht)
+    if ( isset( $result->status ) && isset( $result->detail ) ) {
+        $block_content = '<div ' . get_block_wrapper_attributes() . '><p>API fout: ' . $result->detail.'</p></div>';
+        return ["success" => false, "error" => $block_content];
+    }
+
+   return ["success" => true, "result" => $result];
 }
 
 

@@ -20,15 +20,27 @@ $claims = [];
 if(isset($attributes['credentialData']) && !empty($attributes['credentialData'])) {
    $claims = json_decode($attributes['credentialData'], true);
 }
-if(isset($_SESSION['presentationResponse'])){
-    $presentationResponse = $_SESSION['presentationResponse'];
-    if(isset($presentationResponse['Pid']['claims']['given_name'])){
-        $givenName = $presentationResponse['Pid']['claims']['given_name'];
-        $familyName = $presentationResponse['Pid']['claims']['family_name'];
+if(isset($attributes['sessionData'][0])){
+    $sessionData = json_decode($attributes['sessionData']);
 
-        $claims['firstname'] = $presentationResponse['Pid']['claims']['given_name'];
-        $claims['lastname'] = $presentationResponse['Pid']['claims']['family_name'];
-        $claims['jobtitle'] = '';
+    $sessionMapping = [];
+     if(isset($_SESSION['presentationResponse'])){
+       $presentationResponse = $_SESSION['presentationResponse'];
+        foreach ($sessionData as $key => $value) {
+            if (array_key_exists($value->type, $presentationResponse)) {
+
+               $sessionMapping[$value->key] = $presentationResponse[$value->type]['credential'][$value->mapping];
+            } else {
+               echo $value->type . ' is nog niet gevalideerd<br>';
+               // return;
+            }
+        }
+
+       $claims = array_merge($sessionMapping, $claims);
+
+    } else {
+       echo $block_content = '<div ' . get_block_wrapper_attributes() . '><p>Er kunnen geen credentials opgehaald worden.</p></div>';
+       return;
     }
 }
 
@@ -62,32 +74,26 @@ if(isset($_GET['qrrequest'])){
     }
     $response = sendVciRequest($claims, $attributes);
 
-   if (is_wp_error($response)) {
-       return 'Error fetching data';
-   }
-
-   $body = wp_remote_retrieve_body($response);
-   $result = json_decode( $body );
-
+    if ($response["success"] === false) {
+        echo $response["error"];
+        return;
+    }
    do_action( 'wp_enqueue_script' );
 
-   $qr_content = $attributes['qrCodeEnabled'] ? '<img id="openid4vp_qrImage" src="data:' . $result->qr_uri . '"></>'. __( 'or ', 'fides' ) : '';
-   $block_content = '<div ' . get_block_wrapper_attributes() . '>' . $qr_content . __( 'click ', 'fides' ) . '<a href="' . $result->request_uri . '">link</a></div>';
+   $qr_content = $attributes['qrCodeEnabled'] ? '<img id="openid4vp_qrImage" src="data:' . $response["result"]->qr_uri . '"></>'. __( 'or ', 'fides' ) : '';
+   $block_content = '<div ' . get_block_wrapper_attributes() . '>' . $qr_content . __( 'click ', 'fides' ) . '<a href="' . $response["result"]->request_uri . '">link</a></div>';
 } elseif($form){
    $block_content = '<div ' . get_block_wrapper_attributes() . '>'.$html.'</div>';
 } else {
    $response = sendVciRequest($claims, $attributes);
 
-   if (is_wp_error($response)) {
-       return 'Error fetching data';
-   }
+    if ($response["success"] === false) {
+        echo $response["error"];
+        return;
+    }
 
-   $body = wp_remote_retrieve_body($response);
-
-   $result = json_decode( $body );
-
-   $qr_content = $attributes['qrCodeEnabled'] ? '<img id="openid4vp_qrImage" src="data:' . $result->qr_uri . '"></>'. __( 'or ', 'fides' ) : '';
-   $block_content = '<div ' . get_block_wrapper_attributes() . '>' . $qr_content . __( 'click ', 'fides' ) . '<a href="' . $result->request_uri . '">link</a></div>';
+   $qr_content = $attributes['qrCodeEnabled'] ? '<img id="openid4vp_qrImage" src="data:' . $response["result"]->qr_uri . '"></>'. __( 'or ', 'fides' ) : '';
+   $block_content = '<div ' . get_block_wrapper_attributes() . '>' . $qr_content . __( 'click ', 'fides' ) . '<a href="' . $response["result"]->request_uri . '">link</a></div>';
 }
 
 

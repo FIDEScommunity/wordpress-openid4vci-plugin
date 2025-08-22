@@ -18,16 +18,27 @@ $claims = [];
 if(isset($attributes['credentialData']) && !empty($attributes['credentialData'])) {
    $claims = json_decode($attributes['credentialData'], true);
 }
+if(isset($attributes['sessionData'][0])){
+    $sessionData = json_decode($attributes['sessionData']);
 
-if(isset($_SESSION['presentationResponse'])){
-    $presentationResponse = $_SESSION['presentationResponse'];
-    if(isset($presentationResponse['Pid']['claims']['given_name'])){
-        $givenName = $presentationResponse['Pid']['claims']['given_name'];
-        $familyName = $presentationResponse['Pid']['claims']['family_name'];
+    $sessionMapping = [];
+     if(isset($_SESSION['presentationResponse'])){
+       $presentationResponse = $_SESSION['presentationResponse'];
+        foreach ($sessionData as $key => $value) {
+            if (array_key_exists($value->type, $presentationResponse)) {
 
-        $claims['firstname'] = $presentationResponse['Pid']['claims']['given_name'];
-        $claims['lastname'] = $presentationResponse['Pid']['claims']['family_name'];
-        $claims['jobtitle'] = '';
+               $sessionMapping[$value->key] = $presentationResponse[$value->type]['claims'][$value->mapping];
+            } else {
+               echo $value->type . ' is nog niet gevalideerd<br>';
+               // return;
+            }
+        }
+
+       $claims = array_merge($sessionMapping, $claims);
+
+    } else {
+       echo $block_content = '<div ' . get_block_wrapper_attributes() . '><p>Er kunnen geen credentials opgehaald worden.</p></div>';
+       return;
     }
 }
 
@@ -62,16 +73,13 @@ if(isset($_GET['qrrequest'])){
    }
    $response = sendVciRequest($claims, $attributes);
 
-   if (is_wp_error($response)) {
-       return 'Error fetching data';
+   if ($response["success"] === false) {
+       echo $response["error"];
+       return;
    }
-
-   $body = wp_remote_retrieve_body($response);
-   $result = json_decode( $body );
-
    do_action( 'wp_enqueue_script' );
 
-   wp_redirect( $result -> request_uri );
+   wp_redirect( $response["result"]->request_uri );
    exit;
 } elseif($form){
    $block_content = '<div ' . get_block_wrapper_attributes() . '>'.$html.'</div>';
@@ -81,16 +89,12 @@ if(isset($_GET['qrrequest'])){
 } else {
    $response = sendVciRequest($claims, $attributes);
 
-   if (is_wp_error($response)) {
-       return 'Error fetching data';
+   if ($response["success"] === false) {
+       echo $response["error"];
+       return;
    }
 
-   $body = wp_remote_retrieve_body($response);
-
-   $result = json_decode( $body );
-
-   wp_redirect( $result -> request_uri );
-   exit;
+   wp_redirect( $response["result"]->request_uri );
 }
 
 echo $block_content;
