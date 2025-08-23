@@ -29,7 +29,7 @@ if(isset($attributes['sessionData'][0])){
         foreach ($sessionData as $key => $value) {
             if (array_key_exists($value->type, $presentationResponse)) {
 
-               $sessionMapping[$value->key] = $presentationResponse[$value->type]['credential'][$value->mapping];
+               $sessionMapping[$value->key] = $presentationResponse[$value->type]['claims'][$value->mapping];
             } else {
                echo $value->type . ' is nog niet gevalideerd<br>';
                // return;

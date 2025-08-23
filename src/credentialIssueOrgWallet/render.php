@@ -79,8 +79,12 @@ if(isset($_GET['qrrequest'])){
    }
    do_action( 'wp_enqueue_script' );
 
-   wp_redirect( $response["result"]->request_uri );
-   exit;
+   if (!headers_sent()) {
+       wp_redirect( $response["result"]->request_uri );
+        exit;
+   } else {
+        $block_content = '<script>window.location.replace("' . $response["result"]->request_uri . '")</script>';
+   }
 } elseif($form){
    $block_content = '<div ' . get_block_wrapper_attributes() . '>'.$html.'</div>';
 } elseif(!isset($_GET['walletUrl'])) {
@@ -94,7 +98,12 @@ if(isset($_GET['qrrequest'])){
        return;
    }
 
-   wp_redirect( $response["result"]->request_uri );
+   if (!headers_sent()) {
+       wp_redirect( $response["result"]->request_uri );
+        exit;
+   } else {
+        $block_content = '<script>window.location.replace("' . $response["result"]->request_uri . '")</script>';
+   }
 }
 
 echo $block_content;
