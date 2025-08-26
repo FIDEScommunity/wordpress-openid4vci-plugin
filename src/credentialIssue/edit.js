@@ -145,7 +145,7 @@ export default function Edit( { attributes, setAttributes } ) {
 						) }
 						value={ qrSize }
 						onChange={ ( value ) =>
-							setAttributes( { qrSize: value } )
+							setAttributes( { qrSize: parseInt( value, 10 ) } )
 						}
 					/>
 				}
@@ -178,7 +178,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					) }
 					value={ qrPadding }
 					onChange={ ( value ) =>
-						setAttributes( { qrPadding: value } )
+						setAttributes( { qrPadding: parseInt( value, 10 ) } )
 					}
 				/>}
 			</InspectorAdvancedControls>
