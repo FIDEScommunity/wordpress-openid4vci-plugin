@@ -14,31 +14,72 @@ global $_SESSION;
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-$claims = [];
-if(isset($attributes['credentialData']) && !empty($attributes['credentialData'])) {
-   $claims = json_decode($attributes['credentialData'], true);
-}
-if(isset($attributes['sessionData'][0])){
-    $sessionData = json_decode($attributes['sessionData']);
 
-    $sessionMapping = [];
-     if(isset($_SESSION['presentationResponse'])){
-       $presentationResponse = $_SESSION['presentationResponse'];
-        foreach ($sessionData as $key => $value) {
-            if (array_key_exists($value->type, $presentationResponse)) {
+// Helper: zet $value op een genest pad (bijv. "phone.value" of "email/value")
+if (!function_exists('setByPath')) {
+    function setByPath(array &$arr, string $path, $value, string $separators='./'): void {
+        // splits op . of /
+        $parts = preg_split('/[' . preg_quote($separators, '/') . ']+/', $path, -1, PREG_SPLIT_NO_EMPTY);
+        if (!$parts) return;
 
-               $sessionMapping[$value->key] = $presentationResponse[$value->type]['claims'][$value->mapping];
-            } else {
-               echo $value->type . ' is nog niet gevalideerd<br>';
-               // return;
+        $ref =& $arr;
+        $last = array_pop($parts);
+
+        foreach ($parts as $p) {
+            if (!isset($ref[$p]) || !is_array($ref[$p])) {
+                // maak lege array als het nog niet bestaat of geen array is
+                $ref[$p] = [];
             }
+            $ref =& $ref[$p];
         }
+        $ref[$last] = $value;
+    }
+}
 
-       $claims = array_merge($sessionMapping, $claims);
+$claims = [];
 
+// 1) Statische credentialData als basis
+if (isset($attributes['credentialData']) && !empty($attributes['credentialData'])) {
+    $decoded = json_decode($attributes['credentialData'], true);
+    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+        $claims = $decoded; // basisstructuur (bijv. phone.verified_at, phone.method)
+    } 
+}
+
+// 2) SessionData toepassen als geneste updates
+if (isset($attributes['sessionData'][0]) || isset($attributes['sessionData'])) {
+    // $attributes['sessionData'] kan string JSON zijn (zoals in je voorbeeld)
+    $sessionData = is_string($attributes['sessionData'])
+        ? json_decode($attributes['sessionData'])
+        : $attributes['sessionData'];
+
+    if (json_last_error() === JSON_ERROR_NONE || is_array($sessionData)) {
+        if (isset($_SESSION['presentationResponse'])) {
+            $presentationResponse = $_SESSION['presentationResponse'];
+
+            foreach ($sessionData as $item) {
+                // verwacht object met ->key, ->mapping, ->type
+                if (!isset($item->key, $item->mapping, $item->type)) {
+                    continue;
+                }
+                $type = $item->type;
+                $mapping = $item->mapping;
+
+                if (isset($presentationResponse[$type]['claims'][$mapping])) {
+                    $val = $presentationResponse[$type]['claims'][$mapping];
+
+                    // Schrijf DIRECT in $claims op het geneste pad (overschrijft alleen die leaf)
+                    setByPath($claims, (string)$item->key, $val);
+
+                }
+            }
+        } else {
+          echo $block_content = '<div ' . get_block_wrapper_attributes() . '><p>Er kunnen geen credentials opgehaald worden.</p></div>';
+          return;
+        }
     } else {
-       echo $block_content = '<div ' . get_block_wrapper_attributes() . '><p>Er kunnen geen credentials opgehaald worden.</p></div>';
-       return;
+      echo $block_content = '<div ' . get_block_wrapper_attributes() . '><p>SessionData is niet geldig.</p></div>';
+      return;
     }
 }
 
@@ -107,4 +148,3 @@ if(isset($_GET['qrrequest'])){
 }
 
 echo $block_content;
-
