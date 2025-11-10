@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Universal OID4VCI
  * Description:       Issue verifiable credentials using the universal OID4VCI interface with an organization wallet.
- * Version:           0.3.0
+ * Version:           0.4.0
  * Requires at least: 6.6
  * Requires PHP:      7.2
  * Author:            Credenco B.V.
