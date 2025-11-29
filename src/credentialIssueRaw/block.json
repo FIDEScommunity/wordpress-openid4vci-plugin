@@ -1,0 +1,56 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "openid4vci-plugin/openid4vc-issue-raw",
+  "version": "0.1.0",
+  "title": "OID4VCI – Raw credential issue",
+  "category": "widgets",
+  "description": "Generate a raw SD-JWT credential directly",
+  "example": {},
+  "attributes": {
+    "openidEndpoint": {
+      "type": "string"
+    },
+    "authenticationHeaderName": {
+      "type": "string"
+    },
+    "authenticationToken": {
+      "type": "string"
+    },
+    "credentialIssueTemplateKey": {
+      "type": "string"
+    },
+    "credentialData": {
+      "type": "string"
+    },
+    "formData": {
+      "type": "string"
+    },
+    "sessionData": {
+      "type": "string"
+    },
+    "showCredential": {
+      "type": "boolean",
+      "default": true
+    },
+    "buttonLabel": {
+      "type": "string",
+      "default": "Generate credential"
+    }
+  },
+  "supports": {
+    "color": {
+      "background": false,
+      "text": true
+    },
+    "html": false,
+    "typography": {
+      "fontSize": true
+    }
+  },
+  "textdomain": "openid4vc-issue",
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./index.css",
+  "style": "file:./style-index.css",
+  "render": "file:./render.php"
+}
