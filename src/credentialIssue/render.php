@@ -16,6 +16,26 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Helper: get a value from a nested array using a path like "credentialSubject.given_name"
+if (!function_exists('getByPath')) {
+    function getByPath(array $arr, string $path, string $separators = './') {
+        // Split on "." or "/"
+        $parts = preg_split('/[' . preg_quote($separators, '/') . ']+/', $path, -1, PREG_SPLIT_NO_EMPTY);
+        if (!$parts) {
+            return null;
+        }
+
+        $ref = $arr;
+        foreach ($parts as $p) {
+            if (!is_array($ref) || !array_key_exists($p, $ref)) {
+                return null;
+            }
+            $ref = $ref[$p];
+        }
+        return $ref;
+    }
+}
+
 // Helper: zet $value op een genest pad (bijv. "phone.value" of "email/value")
 if (!function_exists('setByPath')) {
     function setByPath(array &$arr, string $path, $value, string $separators='./'): void {
@@ -66,13 +86,17 @@ if (isset($attributes['sessionData'][0]) || isset($attributes['sessionData'])) {
                 $type = $item->type;
                 $mapping = $item->mapping;
 
-                if (isset($presentationResponse[$type]['claims'][$mapping])) {
-                    $val = $presentationResponse[$type]['claims'][$mapping];
+                // Read from the PID claims using the mapping as a nested path
+                $val = null;
+                if (isset($presentationResponse[$type]['claims']) && is_array($presentationResponse[$type]['claims'])) {
+                    $val = getByPath($presentationResponse[$type]['claims'], (string) $mapping);
+                }
 
-                    // Schrijf DIRECT in $claims op het geneste pad (overschrijft alleen die leaf)
-                    setByPath($claims, (string)$item->key, $val);
+                if ($val !== null) {
+                    // Write into the new credential using "key" as a nested path
+                    setByPath($claims, (string) $item->key, $val);
+                }
 
-                } 
             }
         } else {
           echo $block_content = '<div ' . get_block_wrapper_attributes() . '><p>Er kunnen geen credentials opgehaald worden.</p></div>';
@@ -109,11 +133,48 @@ if(isset($attributes['formData']) && !empty($attributes['formData'])){
 }
 
 if(isset($_GET['qrrequest'])){
-    foreach($_GET as $name => $value) {
-        if($name !== 'qrrequest'){
-            $claims[$name] = $value;
-        }
+
+  // Extract the original form keys defined in the block attributes.
+  // These may contain dots or slashes (e.g. "credentialSubject.given_name").
+  // PHP automatically converts dots in form field names to underscores
+  // when populating $_GET and $_POST. Therefore, we need the original keys
+  // to map the "mangled" PHP keys back to the intended nested structure.
+  $originalFormKeys = [];
+  if (isset($attributes['formData']) && !empty($attributes['formData'])) {
+    $decodedForm = json_decode($attributes['formData']);
+    if ($decodedForm && (is_object($decodedForm) || is_array($decodedForm))) {
+      foreach ($decodedForm as $k => $label) {
+        $originalFormKeys[] = (string) $k; // Example: "credentialSubject.given_name"
+      }
     }
+  }
+
+  foreach ($_GET as $name => $value) {
+    if ($name === 'qrrequest') {
+      continue;
+    }
+
+    $originalKey = $name;
+
+    // Try to find the original key:
+    foreach ($originalFormKeys as $formKey) {
+      // Exact match
+      if ($formKey === $name) {
+        $originalKey = $formKey;
+        break;
+      }
+
+      // Dots or slashes replaced by underscores
+      if (str_replace(['.', '/'], '_', $formKey) === $name) {
+        $originalKey = $formKey;
+        break;
+        }
+      }
+
+      // Write the submitted value into $claims using the *intended* nested path.
+      setByPath($claims, $originalKey, $value);
+    }
+
     $response = sendVciRequest($claims, $attributes);
 
     if ($response["success"] === false) {
@@ -122,6 +183,16 @@ if(isset($_GET['qrrequest'])){
     }
    do_action( 'wp_enqueue_script' );
 
+   if ( isset( $response['result']->credential ) ) {
+       error_log( '[openid4vci] SD-JWT credential response: ' . wp_json_encode( $response['result']->credential ) );
+   } else {
+       error_log( '[openid4vci] Credential response zonder sd-jwt veld: ' . wp_json_encode( $response['result'] ) );
+   }
+   if ( isset( $response['result']->credential ) ) {
+       error_log( '[openid4vci] SD-JWT credential response: ' . wp_json_encode( $response['result']->credential ) );
+   } else {
+       error_log( '[openid4vci] Credential response zonder sd-jwt veld: ' . wp_json_encode( $response['result'] ) );
+   }
    $qr_content = $attributes['qrCodeEnabled'] ? '<img id="openid4vp_qrImage" src="data:' . $response["result"]->qr_uri . '"></>'. __( 'or ', 'fides' ) : '';
    $block_content = '<div ' . get_block_wrapper_attributes() . '>' . $qr_content . __( 'click ', 'fides' ) . '<a href="' . $response["result"]->request_uri . '">link</a></div>';
 } elseif($form){
