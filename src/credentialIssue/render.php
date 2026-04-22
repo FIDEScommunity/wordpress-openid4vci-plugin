@@ -54,7 +54,8 @@ if (isset($attributes['sessionData'][0]) || isset($attributes['sessionData'])) {
 
     if (json_last_error() === JSON_ERROR_NONE || is_array($sessionData)) {
         if (isset($_SESSION['presentationResponse'])) {
-            $presentationResponse = $_SESSION['presentationResponse'];
+            // $_SESSION['presentationResponse'] is populated by the companion OpenID4VP verifier flow on the same site; not external user input.
+            $presentationResponse = $_SESSION['presentationResponse']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
             foreach ($sessionData as $item) {
                 if (!isset($item->key, $item->mapping, $item->type)) {
@@ -97,13 +98,20 @@ if (isset($attributes['formData']) && !empty($attributes['formData'])) {
         $html .= '</div>';
     }
     $html .= '<input type="hidden" name="qrrequest">';
+    $html .= '<input type="hidden" name="openid4vci_nonce" value="' . esc_attr( wp_create_nonce( 'openid4vci_issue' ) ) . '">';
     $html .= '<button type="submit" class="btn btn-primary btn-sm">' . esc_html__( 'Submit', 'universal-oid4vci' ) . '</button>';
     $html .= '</form>';
 }
 
-if (isset($_GET['qrrequest'])) {
-    foreach ($_GET as $name => $value) {
-        if ($name !== 'qrrequest') {
+if ( isset( $_GET['qrrequest'] ) ) {
+    $nonce = isset( $_GET['openid4vci_nonce'] ) ? sanitize_text_field( wp_unslash( $_GET['openid4vci_nonce'] ) ) : '';
+    if ( ! wp_verify_nonce( $nonce, 'openid4vci_issue' ) ) {
+        $block_content = '<div ' . get_block_wrapper_attributes() . '><p>' . esc_html__( 'Security check failed.', 'universal-oid4vci' ) . '</p></div>';
+        echo $block_content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        return;
+    }
+    foreach ( $_GET as $name => $value ) {
+        if ( $name !== 'qrrequest' && $name !== 'openid4vci_nonce' ) {
             $claims[ sanitize_text_field( wp_unslash( $name ) ) ] = sanitize_text_field( wp_unslash( $value ) );
         }
     }

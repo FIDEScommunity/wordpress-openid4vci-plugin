@@ -53,7 +53,8 @@ if (isset($attributes['sessionData'][0]) || isset($attributes['sessionData'])) {
 
     if (json_last_error() === JSON_ERROR_NONE || is_array($sessionData)) {
         if (isset($_SESSION['presentationResponse'])) {
-            $presentationResponse = $_SESSION['presentationResponse'];
+            // $_SESSION['presentationResponse'] is populated by the companion OpenID4VP verifier flow on the same site; not external user input.
+            $presentationResponse = $_SESSION['presentationResponse']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
             foreach ($sessionData as $item) {
                 if (!isset($item->key, $item->mapping, $item->type)) {
@@ -96,14 +97,21 @@ if (isset($attributes['formData']) && !empty($attributes['formData'])) {
         $html .= '</div>';
     }
     $html .= '<input type="hidden" name="qrrequest">';
+    $html .= '<input type="hidden" name="openid4vci_nonce" value="' . esc_attr( wp_create_nonce( 'openid4vci_issue' ) ) . '">';
     $html .= '<div class="form-input mb-3"><label class="d-block mb-2"><strong>' . esc_html__( 'Wallet URL', 'universal-oid4vci' ) . '</strong></label><input type="text" id="business-wallet-url" name="walletUrl" placeholder="' . esc_attr__( 'Enter wallet URL', 'universal-oid4vci' ) . '" /></div>';
     $html .= '<button type="submit" class="btn btn-primary btn-sm">' . esc_html__( 'Connect to wallet', 'universal-oid4vci' ) . '</button>';
     $html .= '</form>';
 }
 
-if (isset($_GET['qrrequest'])) {
-    foreach ($_GET as $name => $value) {
-        if ($name !== 'qrrequest' && $name !== 'walletUrl') {
+if ( isset( $_GET['qrrequest'] ) ) {
+    $nonce = isset( $_GET['openid4vci_nonce'] ) ? sanitize_text_field( wp_unslash( $_GET['openid4vci_nonce'] ) ) : '';
+    if ( ! wp_verify_nonce( $nonce, 'openid4vci_issue' ) ) {
+        $block_content = '<div ' . get_block_wrapper_attributes() . '><p>' . esc_html__( 'Security check failed.', 'universal-oid4vci' ) . '</p></div>';
+        echo $block_content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        return;
+    }
+    foreach ( $_GET as $name => $value ) {
+        if ( $name !== 'qrrequest' && $name !== 'walletUrl' && $name !== 'openid4vci_nonce' ) {
             $claims[ sanitize_text_field( wp_unslash( $name ) ) ] = sanitize_text_field( wp_unslash( $value ) );
         }
     }
@@ -123,7 +131,7 @@ if (isset($_GET['qrrequest'])) {
     }
 } elseif ($form) {
     $block_content = '<div ' . get_block_wrapper_attributes() . '>' . $html . '</div>';
-} elseif (!isset($_GET['walletUrl'])) {
+} elseif ( ! isset( $_GET['walletUrl'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- walletUrl arrives via external wallet redirect; presence check only.
     $block_content = '<form class="mt-4 d-block" id="OpenID4VCI-form"><div ' . get_block_wrapper_attributes() . '><input type="text" id="business-wallet-url" name="walletUrl" placeholder="' . esc_attr__( 'Enter wallet URL', 'universal-oid4vci' ) . '" />
             <button type="submit" class="btn btn-primary btn-sm">' . esc_html__( 'Connect to wallet', 'universal-oid4vci' ) . '</button></div></form>';
 } else {

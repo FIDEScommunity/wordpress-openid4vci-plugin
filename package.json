@@ -7,6 +7,7 @@
 	"main": "build/index.js",
 	"files": [
 		"build",
+		"languages",
 		"openid4vci-plugin.php",
 		"readme.txt",
 		"LICENSE"

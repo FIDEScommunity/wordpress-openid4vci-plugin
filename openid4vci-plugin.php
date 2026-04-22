@@ -44,6 +44,26 @@ register_activation_hook(__FILE__, [$openid4vci, 'upgrade']);
 function openid4vci_block_init() {
    register_block_type( __DIR__ . '/build/credentialIssue' );
    register_block_type( __DIR__ . '/build/credentialIssueBusinessWallet' );
+
+   // Backwards-compat alias: prior plugin versions registered the business-wallet block as
+   // 'openid4vci-plugin/openid4vc-issue-organisation-wallet'. Existing posts still carry that
+   // name in their block comments, so register it as an alias that renders via the same file.
+   $business_metadata_path = __DIR__ . '/build/credentialIssueBusinessWallet/block.json';
+   if ( file_exists( $business_metadata_path ) ) {
+       $business_metadata = json_decode( file_get_contents( $business_metadata_path ), true );
+       register_block_type(
+           'openid4vci-plugin/openid4vc-issue-organisation-wallet',
+           array(
+               'attributes'      => ( is_array( $business_metadata ) && isset( $business_metadata['attributes'] ) ) ? $business_metadata['attributes'] : array(),
+               'render_callback' => function ( $attributes, $content, $block ) {
+                   ob_start();
+                   require __DIR__ . '/build/credentialIssueBusinessWallet/render.php';
+                   return ob_get_clean();
+               },
+           )
+       );
+   }
+
     if(!session_id()) {
         session_start();
     }
@@ -67,8 +87,9 @@ function openid4vci_send_vci_request($claims, $attributes) {
     $params = [];
     $params['claims'] = $claims;
     $params['template_id'] = $attributes['credentialIssueTemplateKey'];
-    if (isset($_GET['walletUrl'])) {
-        $params['request_uri_base'] = sanitize_url( wp_unslash( $_GET['walletUrl'] ) );
+    // walletUrl arrives via external wallet redirect; nonce verification is not possible. Value is sanitized and only reflected into the outbound wallet request.
+    if ( isset( $_GET['walletUrl'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $params['request_uri_base'] = sanitize_url( wp_unslash( $_GET['walletUrl'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
     }
     if (isset($attributes['qrCodeEnabled']) && $attributes['qrCodeEnabled']) {
         $qrCode = (object)[];
@@ -87,8 +108,8 @@ function openid4vci_send_vci_request($claims, $attributes) {
         $params['qr_code'] = $qrCode;
     }
 
-    if (isset($_GET['walletUrl'])) {
-        $params['request_uri_base'] = sanitize_url( wp_unslash( $_GET['walletUrl'] ) );
+    if ( isset( $_GET['walletUrl'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $params['request_uri_base'] = sanitize_url( wp_unslash( $_GET['walletUrl'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
     }
     $credentialData = json_encode($params, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT);
 
