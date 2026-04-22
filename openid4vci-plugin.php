@@ -1,14 +1,14 @@
 <?php
 /**
  * Plugin Name:       Universal OID4VCI
- * Description:       Issue verifiable credentials using the universal OID4VCI interface with an organization wallet.
+ * Description:       Issue verifiable credentials using the universal OID4VCI interface with a business wallet.
  * Version:           0.4.0
  * Requires at least: 6.6
  * Requires PHP:      7.2
  * Author:            Credenco B.V.
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       openid4vp-exchange
+ * Text Domain:       universal-oid4vci
  *
  * @package           create-block
  */
@@ -41,19 +41,19 @@ register_activation_hook(__FILE__, [$openid4vci, 'upgrade']);
  *
  * @see https://developer.wordpress.org/reference/functions/register_block_type/
  */
-function create_block_openid4vci_block_init() {
+function openid4vci_block_init() {
    register_block_type( __DIR__ . '/build/credentialIssue' );
-   register_block_type( __DIR__ . '/build/credentialIssueOrgWallet' );
+   register_block_type( __DIR__ . '/build/credentialIssueBusinessWallet' );
     if(!session_id()) {
         session_start();
     }
 }
 
-add_action( 'init', 'create_block_openid4vci_block_init' );
+add_action( 'init', 'openid4vci_block_init' );
 // Add an action to call our script enqueuing function
 //add_action( 'wp_enqueue_script', 'enqueue_my_scripts' );
 
-function sendVciRequest($claims, $attributes) {
+function openid4vci_send_vci_request($claims, $attributes) {
     $options = new OpenID4VCI_Admin_Options();
     $openidEndpoint = $options->openidEndpoint;
     $authenticationHeaderName = $options->authenticationHeaderName;
@@ -68,7 +68,7 @@ function sendVciRequest($claims, $attributes) {
     $params['claims'] = $claims;
     $params['template_id'] = $attributes['credentialIssueTemplateKey'];
     if (isset($_GET['walletUrl'])) {
-        $params['request_uri_base'] = $_GET['walletUrl'];
+        $params['request_uri_base'] = sanitize_url( wp_unslash( $_GET['walletUrl'] ) );
     }
     if (isset($attributes['qrCodeEnabled']) && $attributes['qrCodeEnabled']) {
         $qrCode = (object)[];
@@ -88,7 +88,7 @@ function sendVciRequest($claims, $attributes) {
     }
 
     if (isset($_GET['walletUrl'])) {
-        $params['request_uri_base'] = $_GET['walletUrl'];
+        $params['request_uri_base'] = sanitize_url( wp_unslash( $_GET['walletUrl'] ) );
     }
     $credentialData = json_encode($params, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT);
 
@@ -109,13 +109,12 @@ function sendVciRequest($claims, $attributes) {
     $result = json_decode( $body );
 
     if ( json_last_error() !== JSON_ERROR_NONE ) {
-        $block_content = '<div ' . get_block_wrapper_attributes() . '><p>JSON decode fout: ' . json_last_error_msg().'</p></div>';
+        $block_content = '<div ' . get_block_wrapper_attributes() . '><p>JSON decode fout: ' . esc_html( json_last_error_msg() ) . '</p></div>';
         return ["success" => false, "error" => $block_content];
     }
 
-    // Controleer op fout in de API response zelf (bijv. foutcode of foutbericht)
     if ( isset( $result->status ) && isset( $result->detail ) ) {
-        $block_content = '<div ' . get_block_wrapper_attributes() . '><p>API fout: ' . $result->detail.'</p></div>';
+        $block_content = '<div ' . get_block_wrapper_attributes() . '><p>API fout: ' . esc_html( $result->detail ) . '</p></div>';
         return ["success" => false, "error" => $block_content];
     }
 

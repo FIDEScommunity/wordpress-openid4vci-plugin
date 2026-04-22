@@ -46,7 +46,7 @@ class OpenID4VCI_Admin_Settings {
                 <h1>Universal OID4VCI Settings</h1>
             </div>
             <div class="admin-settings-inside">
-                <p>This plugin is provides the Universal OID4VCI flow to issue credentials via an organization wallet.</p>
+                <p>This plugin is provides the Universal OID4VCI flow to issue credentials via a business wallet.</p>
                 <div id="accordion">
                     <h3 id="sso-configuration">Configuration</h3>
                     <div class="row">
@@ -79,7 +79,7 @@ class OpenID4VCI_Admin_Settings {
                     </div>
                     <hr />
                     <p class="submit">
-                        <input type="submit" class="button-primary" value="<?php esc_html_e('Save Changes', 'openid4vci-plugin') ?>"/>
+                        <input type="submit" class="button-primary" value="<?php esc_html_e('Save Changes', 'universal-oid4vci') ?>"/>
                     </p>
                     </form>
                 </div>
