@@ -25,6 +25,7 @@ if (!defined('OPENID4VCI_PLUGIN_DIR')) {
 }
 
 require_once(OPENID4VCI_PLUGIN_DIR . 'build/OpenID4VCI.php');
+require_once(OPENID4VCI_PLUGIN_DIR . 'build/openid4vp-session.php');
 
 $openid4vci = new OpenID4VCI();
 
@@ -64,9 +65,24 @@ function openid4vci_block_init() {
        );
    }
 
-    if(!session_id()) {
-        session_start();
-    }
+   // Backwards-compat alias: prior plugin versions registered the personal-wallet block as
+   // 'openid4vci-plugin/openid4vc-issue'. Existing posts still carry that name in their block
+   // comments, so register it as an alias that renders via the same file.
+   $personal_metadata_path = __DIR__ . '/build/credentialIssue/block.json';
+   if ( file_exists( $personal_metadata_path ) ) {
+       $personal_metadata = json_decode( file_get_contents( $personal_metadata_path ), true );
+       register_block_type(
+           'openid4vci-plugin/openid4vc-issue',
+           array(
+               'attributes'      => ( is_array( $personal_metadata ) && isset( $personal_metadata['attributes'] ) ) ? $personal_metadata['attributes'] : array(),
+               'render_callback' => function ( $attributes, $content, $block ) {
+                   ob_start();
+                   require __DIR__ . '/build/credentialIssue/render.php';
+                   return ob_get_clean();
+               },
+           )
+       );
+   }
 }
 
 add_action( 'init', 'openid4vci_block_init' );

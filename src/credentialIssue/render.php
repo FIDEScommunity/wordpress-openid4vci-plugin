@@ -14,12 +14,6 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-global $_SESSION;
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 if (!function_exists('openid4vci_set_by_path')) {
     function openid4vci_set_by_path(array &$arr, string $path, $value, string $separators='./'): void {
         $parts = preg_split('/[' . preg_quote($separators, '/') . ']+/', $path, -1, PREG_SPLIT_NO_EMPTY);
@@ -53,10 +47,8 @@ if (isset($attributes['sessionData'][0]) || isset($attributes['sessionData'])) {
         : $attributes['sessionData'];
 
     if (json_last_error() === JSON_ERROR_NONE || is_array($sessionData)) {
-        if (isset($_SESSION['presentationResponse'])) {
-            // $_SESSION['presentationResponse'] is populated by the companion OpenID4VP verifier flow on the same site; not external user input.
-            $presentationResponse = $_SESSION['presentationResponse']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-
+        $presentationResponse = universal_openid4vp_session_get( 'presentationResponse' );
+        if ( ! empty( $presentationResponse ) ) {
             foreach ($sessionData as $item) {
                 if (!isset($item->key, $item->mapping, $item->type)) {
                     continue;
