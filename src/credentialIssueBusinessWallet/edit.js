@@ -54,11 +54,11 @@ export default function Edit( { attributes, setAttributes } ) {
 	return (
 		<>
 			<InspectorControls>
-				<PanelBody title={ __( 'Settings', 'openid4vc-issue' ) }>
+				<PanelBody title={ __( 'Settings', 'universal-oid4vci' ) }>
 					<TextControl
 						label={ __(
 							'Credential issue template key',
-							'openid4vc-issue'
+							'universal-oid4vci'
 						) }
 						value={ credentialIssueTemplateKey }
 						onChange={ ( value ) =>
@@ -68,7 +68,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					<TextareaControl
 						label={ __(
 							'Credential data',
-							'openid4vc-issue'
+							'universal-oid4vci'
 						) }
 						value={ credentialData }
 						onChange={ ( value ) =>
@@ -78,7 +78,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					<TextareaControl
 						label={ __(
 							'Form data',
-							'openid4vc-issue'
+							'universal-oid4vci'
 						) }
 						value={ formData }
 						onChange={ ( value ) =>
@@ -88,7 +88,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					<TextareaControl
 						label={ __(
 							'Session data',
-							'openid4vc-issue'
+							'universal-oid4vci'
 						) }
 						value={ sessionData }
 						onChange={ ( value ) =>
@@ -101,7 +101,7 @@ export default function Edit( { attributes, setAttributes } ) {
 				<TextControl
 					label={ __(
 						'OpenID4VCI Endpoint',
-						'openid4vc-issue'
+						'universal-oid4vci'
 					) }
 					value={ openidEndpoint }
 					onChange={ ( value ) =>

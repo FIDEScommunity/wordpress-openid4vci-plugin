@@ -56,7 +56,7 @@
 			"fontSize": true
 		}
 	},
-	"textdomain": "openid4vc-issue",
+	"textdomain": "universal-oid4vci",
 	"editorScript": "file:./index.js",
 	"editorStyle": "file:./index.css",
 	"style": "file:./style-index.css",

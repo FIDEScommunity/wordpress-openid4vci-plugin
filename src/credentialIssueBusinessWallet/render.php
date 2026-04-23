@@ -69,7 +69,7 @@ if (isset($attributes['sessionData'][0]) || isset($attributes['sessionData'])) {
         }
     } else {
         $block_content = '<div ' . get_block_wrapper_attributes() . '><p>' . esc_html__( 'SessionData is niet geldig.', 'universal-oid4vci' ) . '</p></div>';
-        echo $block_content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        echo wp_kses_post( $block_content );
         return;
     }
 }
@@ -91,7 +91,8 @@ if (isset($attributes['formData']) && !empty($attributes['formData'])) {
     }
     $html .= '<input type="hidden" name="qrrequest">';
     $html .= '<input type="hidden" name="openid4vci_nonce" value="' . esc_attr( wp_create_nonce( 'openid4vci_issue' ) ) . '">';
-    $html .= '<button type="submit" class="btn btn-primary btn-sm">' . esc_html__( 'Submit', 'universal-oid4vci' ) . '</button>';
+    $html .= '<div class="form-input mb-3"><label class="d-block mb-2"><strong>' . esc_html__( 'Wallet URL', 'universal-oid4vci' ) . '</strong></label><input type="text" id="business-wallet-url" name="walletUrl" placeholder="' . esc_attr__( 'Enter wallet URL', 'universal-oid4vci' ) . '" /></div>';
+    $html .= '<button type="submit" class="btn btn-primary btn-sm">' . esc_html__( 'Connect to wallet', 'universal-oid4vci' ) . '</button>';
     $html .= '</form>';
 }
 
@@ -103,7 +104,7 @@ if ( isset( $_GET['qrrequest'] ) ) {
         return;
     }
     foreach ( $_GET as $name => $value ) {
-        if ( $name !== 'qrrequest' && $name !== 'openid4vci_nonce' ) {
+        if ( $name !== 'qrrequest' && $name !== 'walletUrl' && $name !== 'openid4vci_nonce' ) {
             $claims[ sanitize_text_field( wp_unslash( $name ) ) ] = sanitize_text_field( wp_unslash( $value ) );
         }
     }
@@ -115,12 +116,17 @@ if ( isset( $_GET['qrrequest'] ) ) {
     }
     do_action( 'wp_enqueue_script' );
 
-    $qr_content = $attributes['qrCodeEnabled']
-        ? '<img id="openid4vp_qrImage" src="data:' . esc_attr( $response["result"]->qr_uri ) . '" />' . esc_html__( 'or ', 'universal-oid4vci' )
-        : '';
-    $block_content = '<div ' . get_block_wrapper_attributes() . '>' . $qr_content . esc_html__( 'click ', 'universal-oid4vci' ) . '<a href="' . esc_url( $response["result"]->request_uri ) . '">link</a></div>';
+    if (!headers_sent()) {
+        wp_safe_redirect( $response["result"]->request_uri );
+        exit;
+    } else {
+        $block_content = '<script>window.location.replace("' . esc_js( $response["result"]->request_uri ) . '")</script>';
+    }
 } elseif ($form) {
     $block_content = '<div ' . get_block_wrapper_attributes() . '>' . $html . '</div>';
+} elseif ( ! isset( $_GET['walletUrl'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- walletUrl arrives via external wallet redirect; presence check only.
+    $block_content = '<form class="mt-4 d-block" id="OpenID4VCI-form"><div ' . get_block_wrapper_attributes() . '><input type="text" id="business-wallet-url" name="walletUrl" placeholder="' . esc_attr__( 'Enter wallet URL', 'universal-oid4vci' ) . '" />
+            <button type="submit" class="btn btn-primary btn-sm">' . esc_html__( 'Connect to wallet', 'universal-oid4vci' ) . '</button></div></form>';
 } else {
     $response = openid4vci_send_vci_request($claims, $attributes);
 
@@ -129,10 +135,14 @@ if ( isset( $_GET['qrrequest'] ) ) {
         return;
     }
 
-    $qr_content = $attributes['qrCodeEnabled']
-        ? '<img id="openid4vp_qrImage" src="data:' . esc_attr( $response["result"]->qr_uri ) . '" />' . esc_html__( 'or ', 'universal-oid4vci' )
-        : '';
-    $block_content = '<div ' . get_block_wrapper_attributes() . '>' . $qr_content . esc_html__( 'click ', 'universal-oid4vci' ) . '<a href="' . esc_url( $response["result"]->request_uri ) . '">link</a></div>';
+    if (!headers_sent()) {
+        wp_safe_redirect( $response["result"]->request_uri );
+        exit;
+    } else {
+        $block_content = '<script>window.location.replace("' . esc_js( $response["result"]->request_uri ) . '")</script>';
+    }
 }
 
-echo $block_content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+if ( isset( $block_content ) ) {
+    echo $block_content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+}

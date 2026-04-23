@@ -1,10 +1,17 @@
 {
-	"name": "openid4vci-plugin",
+	"name": "universal-oid4vci",
 	"version": "0.4.0",
-	"description": "Display your site's copyright date.",
+	"description": "Issue verifiable credentials using the universal OID4VCI interface with an organization wallet.",
 	"author": "Credenco B.V.",
 	"license": "GPL-2.0-or-later",
 	"main": "build/index.js",
+	"files": [
+		"build",
+		"languages",
+		"openid4vci-plugin.php",
+		"readme.txt",
+		"LICENSE"
+	],
 	"scripts": {
 		"build": "wp-scripts build --webpack-copy-php",
 		"format": "wp-scripts format",

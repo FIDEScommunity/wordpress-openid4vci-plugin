@@ -1,58 +1,94 @@
-=== Copyright Date Block ===
-Contributors:      The WordPress Contributors
-Tags:              block
-Tested up to:      6.6
-Stable tag:        0.2.0
+=== Universal OID4VCI ===
+Contributors:      credenco
+Tags:              openid4vci, verifiable-credentials, identity, wallet, gutenberg
+Requires at least: 6.6
+Tested up to:      6.9
+Requires PHP:      7.2
+Stable tag:        0.4.0
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
-Display your site&#39;s copyright date.
+Issue verifiable credentials using the OpenID for Verifiable Credential Issuance (OID4VCI) protocol with a business wallet.
 
 == Description ==
 
-This is the long description. No limit, and you can use Markdown (as well as in the following sections).
+Universal OID4VCI provides Gutenberg blocks that let a WordPress site kick off a credential issuance flow against any OID4VCI-compliant business wallet. Visitors can receive verifiable credentials directly into their personal wallet by scanning a QR code or by entering a wallet URL.
 
-For backwards compatibility, if this section is missing, the full length of the short description will be used, and
-Markdown parsed.
+Features:
+
+* **Credential Issue** block — starts a QR-code based credential issuance flow for personal wallets.
+* **Credential Issue (Business Wallet)** block — starts a direct wallet-URL flow for business-to-business issuance.
+* Admin settings for the OID4VCI endpoint and API authentication header.
+* Configurable QR code appearance (size, colors, padding).
+* Optional form fields so the visitor can supply claim values before issuance.
+
+== External services ==
+
+This plugin connects to an external OID4VCI credential-issuance endpoint (a "business wallet") whose URL is configured by the site administrator in **Settings → Universal OID4VCI**. The plugin does not connect to any endpoint until the administrator configures one and a visitor interacts with a block.
+
+What is sent, and when:
+
+* When a visitor submits a credential-issue block, the plugin sends an HTTPS POST request to the configured endpoint. The request includes:
+  * The `template_id` configured on the block.
+  * Any claim values that the visitor entered in the block's form fields, or that the administrator configured via the block's `credentialData` attribute.
+  * Optional QR-code rendering parameters (size, colors) when the QR output is enabled.
+  * The configured authentication header and token.
+* The plugin does not send any WordPress user data, cookies, IP addresses, or other personal data beyond what is listed above.
+* The endpoint returns a `qr_uri` and `request_uri` which the plugin renders on the page so the visitor can complete the issuance in their wallet.
+
+The endpoint is operated by the wallet provider that the site administrator has chosen. Review that provider's terms of service and privacy policy before enabling the plugin on a production site.
+
+Example wallet service (not affiliated with this plugin unless configured by the site owner):
+
+* Credenco Business Wallet — https://www.credenco.com — terms: https://www.credenco.com/terms — privacy: https://www.credenco.com/privacy
 
 == Installation ==
 
-This section describes how to install the plugin and get it working.
-
-e.g.
-
-1. Upload the plugin files to the `/wp-content/plugins/openid4vp-block` directory, or install the plugin through the WordPress plugins screen directly.
-1. Activate the plugin through the 'Plugins' screen in WordPress
-
+1. Upload the plugin files to the `/wp-content/plugins/universal-oid4vci` directory, or install the plugin through the WordPress Plugins screen directly.
+2. Activate the plugin through the **Plugins** screen in WordPress.
+3. Go to **Settings → Universal OID4VCI** and configure:
+   * **OID4VCI Endpoint** — the issuance endpoint URL of your business wallet.
+   * **Authentication header** — the header name your wallet expects (default `x-api-key`).
+   * **Authentication token** — the API key / secret for your wallet.
+4. Add the **Credential Issue** or **Credential Issue (Business Wallet)** block to any page or post and set a `credentialIssueTemplateKey` that exists on your wallet.
 
 == Frequently Asked Questions ==
 
-= A question that someone might have =
+= Which wallets are supported? =
 
-An answer to that question.
+Any wallet that implements the OpenID for Verifiable Credential Issuance specification and accepts the plugin's request shape.
 
-= What about foo bar? =
+= Does this plugin share data with third parties? =
 
-Answer to foo bar dilemma.
+Only with the OID4VCI endpoint configured by the site administrator, and only when a visitor interacts with a block. See the **External services** section above.
+
+= Does the plugin store personal data locally? =
+
+No. The plugin stores only the endpoint URL and API credentials that the administrator enters on the settings page.
 
 == Screenshots ==
 
-1. This screen shot description corresponds to screenshot-1.(png|jpg|jpeg|gif). Note that the screenshot is taken from
-the /assets directory or the directory that contains the stable readme.txt (tags or trunk). Screenshots in the /assets
-directory take precedence. For example, `/assets/screenshot-1.png` would win over `/tags/4.3/screenshot-1.png`
-(or jpg, jpeg, gif).
-2. This is the second screen shot
+1. Universal OID4VCI settings page under **Settings → Universal OID4VCI**.
+2. A page with the Credential Issue block rendering a QR code that opens the visitor's wallet.
 
 == Changelog ==
 
-= 0.1.0 =
-* Release
+= 0.4.0 =
+* Renamed plugin to "Universal OID4VCI".
+* Aligned text domain to `universal-oid4vci` across PHP and block editor files.
+* Added `load_plugin_textdomain` hook and a `.pot` translation template.
+* Added nonce verification on the credential-issue form handlers.
+* Added `ABSPATH` direct-access guards.
+* Hardened output escaping for wordpress.org compliance.
+* Documented external service usage in readme.
 
 = 0.2.0 =
-* Release
+* Release.
 
-== Arbitrary section ==
+= 0.1.0 =
+* Initial release.
 
-You may provide arbitrary sections, in the same format as the ones above. This may be of use for extremely complicated
-plugins where more information needs to be conveyed that doesn't fit into the categories of "description" or
-"installation." Arbitrary sections will be shown below the built-in sections outlined above.
+== Upgrade Notice ==
+
+= 0.4.0 =
+Plugin slug and text domain have changed to `universal-oid4vci`. Review your settings after upgrading.

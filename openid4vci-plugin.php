@@ -1,14 +1,14 @@
 <?php
 /**
  * Plugin Name:       Universal OID4VCI
- * Description:       Issue verifiable credentials using the universal OID4VCI interface with an organization wallet.
+ * Description:       Issue verifiable credentials using the universal OID4VCI interface with a business wallet.
  * Version:           0.4.0
  * Requires at least: 6.6
  * Requires PHP:      7.2
  * Author:            Credenco B.V.
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       openid4vp-exchange
+ * Text Domain:       universal-oid4vci
  *
  * @package           create-block
  */
@@ -25,6 +25,7 @@ if (!defined('OPENID4VCI_PLUGIN_DIR')) {
 }
 
 require_once(OPENID4VCI_PLUGIN_DIR . 'build/OpenID4VCI.php');
+require_once(OPENID4VCI_PLUGIN_DIR . 'build/openid4vp-session.php');
 
 $openid4vci = new OpenID4VCI();
 
@@ -41,19 +42,54 @@ register_activation_hook(__FILE__, [$openid4vci, 'upgrade']);
  *
  * @see https://developer.wordpress.org/reference/functions/register_block_type/
  */
-function create_block_openid4vci_block_init() {
+function openid4vci_block_init() {
    register_block_type( __DIR__ . '/build/credentialIssue' );
-   register_block_type( __DIR__ . '/build/credentialIssueOrgWallet' );
-    if(!session_id()) {
-        session_start();
-    }
+   register_block_type( __DIR__ . '/build/credentialIssueBusinessWallet' );
+
+   // Backwards-compat alias: prior plugin versions registered the business-wallet block as
+   // 'openid4vci-plugin/openid4vc-issue-organisation-wallet'. Existing posts still carry that
+   // name in their block comments, so register it as an alias that renders via the same file.
+   $business_metadata_path = __DIR__ . '/build/credentialIssueBusinessWallet/block.json';
+   if ( file_exists( $business_metadata_path ) ) {
+       $business_metadata = json_decode( file_get_contents( $business_metadata_path ), true );
+       register_block_type(
+           'openid4vci-plugin/openid4vc-issue-organisation-wallet',
+           array(
+               'attributes'      => ( is_array( $business_metadata ) && isset( $business_metadata['attributes'] ) ) ? $business_metadata['attributes'] : array(),
+               'render_callback' => function ( $attributes, $content, $block ) {
+                   ob_start();
+                   require __DIR__ . '/build/credentialIssueBusinessWallet/render.php';
+                   return ob_get_clean();
+               },
+           )
+       );
+   }
+
+   // Backwards-compat alias: prior plugin versions registered the personal-wallet block as
+   // 'openid4vci-plugin/openid4vc-issue'. Existing posts still carry that name in their block
+   // comments, so register it as an alias that renders via the same file.
+   $personal_metadata_path = __DIR__ . '/build/credentialIssue/block.json';
+   if ( file_exists( $personal_metadata_path ) ) {
+       $personal_metadata = json_decode( file_get_contents( $personal_metadata_path ), true );
+       register_block_type(
+           'openid4vci-plugin/openid4vc-issue',
+           array(
+               'attributes'      => ( is_array( $personal_metadata ) && isset( $personal_metadata['attributes'] ) ) ? $personal_metadata['attributes'] : array(),
+               'render_callback' => function ( $attributes, $content, $block ) {
+                   ob_start();
+                   require __DIR__ . '/build/credentialIssue/render.php';
+                   return ob_get_clean();
+               },
+           )
+       );
+   }
 }
 
-add_action( 'init', 'create_block_openid4vci_block_init' );
+add_action( 'init', 'openid4vci_block_init' );
 // Add an action to call our script enqueuing function
 //add_action( 'wp_enqueue_script', 'enqueue_my_scripts' );
 
-function sendVciRequest($claims, $attributes) {
+function openid4vci_send_vci_request($claims, $attributes) {
     $options = new OpenID4VCI_Admin_Options();
     $openidEndpoint = $options->openidEndpoint;
     $authenticationHeaderName = $options->authenticationHeaderName;
@@ -67,8 +103,9 @@ function sendVciRequest($claims, $attributes) {
     $params = [];
     $params['claims'] = $claims;
     $params['template_id'] = $attributes['credentialIssueTemplateKey'];
-    if (isset($_GET['walletUrl'])) {
-        $params['request_uri_base'] = $_GET['walletUrl'];
+    // walletUrl arrives via external wallet redirect; nonce verification is not possible. Value is sanitized and only reflected into the outbound wallet request.
+    if ( isset( $_GET['walletUrl'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $params['request_uri_base'] = sanitize_url( wp_unslash( $_GET['walletUrl'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
     }
     if (isset($attributes['qrCodeEnabled']) && $attributes['qrCodeEnabled']) {
         $qrCode = (object)[];
@@ -87,8 +124,8 @@ function sendVciRequest($claims, $attributes) {
         $params['qr_code'] = $qrCode;
     }
 
-    if (isset($_GET['walletUrl'])) {
-        $params['request_uri_base'] = $_GET['walletUrl'];
+    if ( isset( $_GET['walletUrl'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $params['request_uri_base'] = sanitize_url( wp_unslash( $_GET['walletUrl'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
     }
     $credentialData = json_encode($params, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT);
 
@@ -109,13 +146,12 @@ function sendVciRequest($claims, $attributes) {
     $result = json_decode( $body );
 
     if ( json_last_error() !== JSON_ERROR_NONE ) {
-        $block_content = '<div ' . get_block_wrapper_attributes() . '><p>JSON decode fout: ' . json_last_error_msg().'</p></div>';
+        $block_content = '<div ' . get_block_wrapper_attributes() . '><p>JSON decode fout: ' . esc_html( json_last_error_msg() ) . '</p></div>';
         return ["success" => false, "error" => $block_content];
     }
 
-    // Controleer op fout in de API response zelf (bijv. foutcode of foutbericht)
     if ( isset( $result->status ) && isset( $result->detail ) ) {
-        $block_content = '<div ' . get_block_wrapper_attributes() . '><p>API fout: ' . $result->detail.'</p></div>';
+        $block_content = '<div ' . get_block_wrapper_attributes() . '><p>API fout: ' . esc_html( $result->detail ) . '</p></div>';
         return ["success" => false, "error" => $block_content];
     }
 
